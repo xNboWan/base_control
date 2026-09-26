@@ -1,0 +1,6 @@
+.vscode/
+.cache/
+build/
+.mxproject
+base_control.ioc
+cmake/
