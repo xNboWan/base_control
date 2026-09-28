@@ -1,0 +1,55 @@
+# STM32 / FreeRTOS C 风格；兼容本机 clang-format 14。
+BasedOnStyle: LLVM
+
+# 缩进与行宽。
+IndentWidth: 4
+ContinuationIndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 100
+
+# 函数、类型和控制语句的大括号独占一行。
+BreakBeforeBraces: Allman
+AllowShortBlocksOnASingleLine: Never
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortEnumsOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+IndentCaseLabels: true
+
+# 指针靠变量名：uint8_t *buffer。
+DerivePointerAlignment: false
+PointerAlignment: Right
+SpaceBeforeParens: ControlStatements
+
+# 长参数列表换行后，每个参数独占一行，避免很深的对齐缩进。
+BinPackArguments: false
+BinPackParameters: false
+AllowAllArgumentsOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
+AlignAfterOpenBracket: DontAlign
+AlignOperands: DontAlign
+BreakBeforeBinaryOperators: NonAssignment
+
+# 配置表的每个结构体元素保持易读的对齐。
+Cpp11BracedListStyle: true
+AlignArrayOfStructures: Left
+AlignConsecutiveAssignments: None
+AlignConsecutiveDeclarations: None
+
+# 预处理指令顶格，连续宏定义对齐，续行反斜杠右对齐。
+IndentPPDirectives: None
+AlignConsecutiveMacros: Consecutive
+AlignEscapedNewlines: Right
+
+# 保留 HAL / FreeRTOS 头文件的包含顺序、中文注释和字符串内容。
+SortIncludes: Never
+IncludeBlocks: Preserve
+ReflowComments: false
+BreakStringLiterals: false
+AlignTrailingComments: true
+
+KeepEmptyLinesAtTheStartOfBlocks: false
+MaxEmptyLinesToKeep: 1
+DeriveLineEnding: true

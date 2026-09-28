@@ -1,12 +1,9 @@
 #ifndef BSP_LED_H
 #define BSP_LED_H
 
-typedef enum{
-    RED = 0,
-    GREEN
-} ledType;
+#include "stm32f4xx_hal.h"
 
-void ledOpen(ledType led);
-void ledToggle(ledType led);
-void ledClose(ledType led);
+#define IMU_PASS   HAL_GPIO_WritePin(GPIOG, GPIO_PIN_1, GPIO_PIN_RESET)
+#define ALL_PASS   HAL_GPIO_WritePin(GPIOF, GPIO_PIN_14, GPIO_PIN_RESET)
+#define INIT_ERROR HAL_GPIO_WritePin(GPIOE, GPIO_PIN_11, GPIO_PIN_RESET)
 #endif

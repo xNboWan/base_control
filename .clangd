@@ -1,0 +1,15 @@
+# 使用 CMake 的真实编译参数，继承 MCU/FPU、C11、HAL 和 FreeRTOS 配置。
+CompileFlags:
+  CompilationDatabase: build/Debug
+  Add:
+    - --target=arm-none-eabi
+    - -mthumb
+  # 这些参数用于 GCC 构建产物，不参与编辑器的语法分析。
+  Remove:
+    - -fstack-usage
+    - -fcyclomatic-complexity
+    - --specs=*
+    - -specs=*
+
+Index:
+  Background: Build
