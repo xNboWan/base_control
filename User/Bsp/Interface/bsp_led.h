@@ -1,5 +1,5 @@
-#ifndef LED_H
-#define LED_H
+#ifndef BSP_LED_H
+#define BSP_LED_H
 
 typedef enum{
     RED = 0,

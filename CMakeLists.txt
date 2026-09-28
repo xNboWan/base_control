@@ -1,11 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
 
-#
-# This file is generated only once,
-# and is not re-generated if converter is called multiple times.
-#
-# User is free to modify the file as much as necessary
-#
 
 # Use the ARM GCC toolchain by default, including non-preset builds.
 set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/cmake/gcc-arm-none-eabi.cmake"
@@ -66,6 +60,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/User/Bsp/Interface
     ${CMAKE_CURRENT_SOURCE_DIR}/User/Modules/Interface
     ${CMAKE_CURRENT_SOURCE_DIR}/User/Devices/Interface
+    ${CMAKE_CURRENT_SOURCE_DIR}/User/Common/Interface
 )
 
 # Add project symbols (macros)
@@ -81,4 +76,23 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     stm32cubemx
 
     # Add user defined libraries
+)
+
+set(FREERTOS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/MiddleWares/FreeRTOS")
+
+target_sources(${CMAKE_PROJECT_NAME} PRIVATE
+    ${FREERTOS_DIR}/tasks.c
+    ${FREERTOS_DIR}/queue.c
+    ${FREERTOS_DIR}/list.c
+    ${FREERTOS_DIR}/event_groups.c
+    ${FREERTOS_DIR}/stream_buffer.c
+    ${FREERTOS_DIR}/timers.c
+    ${FREERTOS_DIR}/portable/GCC/ARM_CM4F/port.c
+    ${FREERTOS_DIR}/portable/MemMang/heap_4.c
+)
+
+target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
+    ${FREERTOS_DIR}/include
+    ${FREERTOS_DIR}/portable/GCC/ARM_CM4F
+    ${CMAKE_CURRENT_SOURCE_DIR}/Core/Inc
 )
