@@ -60,6 +60,8 @@
 #define CMD_ID_SET_SYNCOUT_CFG              0x0C
 #define CMD_ID_GET_SYNCOUT_CFG              0x0D
 
+/* 算法配置 */
+#define CMD_ID_SET_PACKET_UPDATE_RATE       0x10
 
 /* 数据配置类（仅保留需要的宏） */
 /* ---- 原始数据（int16，需乘 gain 换算） ---- */
@@ -81,21 +83,27 @@
 #define IMU_COMM_DELAY_TIME_MS 1000
 
 
+static void saberWakeUpAck(saberCtx_t *saber);
 static uint8_t saberAtomBCC(uint8_t *addr, uint16_t len);
 static void saberSendFrame(saberCtx_t *saber, uint8_t cid, uint8_t mid, const uint8_t *payload, uint8_t pl);
 static uint16_t saberRecvFrame(saberCtx_t *saber, uint8_t *rx_buf, uint16_t buf_size, uint32_t timeout);
 static bool saberAckCheck(saberCtx_t *saber, uint8_t cid, uint8_t mid, uint32_t timeout);
 static bool saberRecvWakeUpHost(saberCtx_t *saber);
 static bool saberSwitchToConfigMode(saberCtx_t *saber, uint32_t timeout);
+static bool saberSetUpdateRate(saberCtx_t *saber, uint16_t rate, uint32_t timeout);
+static bool saberSetDataPacketConfig(saberCtx_t *saber, uint32_t timeout);
 static bool saberSwitchMeasureMode(saberCtx_t *saber, uint32_t timeout);
+static bool saberParseDataFrame(saberCtx_t *saber, imuData_t *data);
 static bool saberInit(void *ctx);
 static bool saberRead(void *ctx, imuData_t *data);
+
 
 typedef struct
 {
     uint16_t pid;
     bool enable;
 } saberPktCfg_t;
+
 
 /* 数据配置注册表 */
 static const saberPktCfg_t saber_pkt_table[] = {
@@ -104,7 +112,41 @@ static const saberPktCfg_t saber_pkt_table[] = {
     {SABER_PID_EULER,       true},
 };
 
+
+static uint8_t dma_buf[256] = {0};
+
 imuOps_t saber_ops = {.init = saberInit, .read = saberRead};
+
+
+bool saberInit(void *ctx)
+{
+    saberCtx_t *saber = ctx;
+
+    if (!saber || !saber->huart)
+        return false;
+
+    uint16_t b = saberRecvWakeUpHost(ctx);
+    if (b)
+        for (uint8_t i = 0; i < 3; i++)
+            saberWakeUpAck(ctx);
+
+    /* 这里的延时不能太短，起码要300ms，否则会导致数据包发送过快，接收不到saber反馈的ack帧
+   */
+    CHECK(saberSwitchToConfigMode(ctx, IMU_COMM_DELAY_TIME_MS));
+    CHECK(saberSetDataPacketConfig(ctx, IMU_COMM_DELAY_TIME_MS));
+    CHECK(saberSetUpdateRate(saber, 100u, IMU_COMM_DELAY_TIME_MS)); // 这里频率不可以设置为更大的值，因为更高的发送频率会超出串口的带宽，如果要更高的发送频率，需要同时配置串口和saber的波特率为更高值
+    CHECK(saberSwitchMeasureMode(ctx, IMU_COMM_DELAY_TIME_MS));
+    HAL_UARTEx_ReceiveToIdle_DMA(saber->huart, dma_buf, sizeof(dma_buf));
+    
+    return true;
+}
+
+bool saberRead(void *ctx, imuData_t *data)
+{
+    saberCtx_t *saber = ctx;
+    return saberParseDataFrame(saber, data);
+}
+
 
 /**
  * @brief bcc校验
@@ -331,6 +373,16 @@ bool saberSetDataPacketConfig(saberCtx_t *saber, uint32_t timeout)
     return ack;
 }
 
+bool saberSetUpdateRate(saberCtx_t *saber, uint16_t rate, uint32_t timeout)
+{
+    const uint8_t cid = CLASS_ID_ALGORITHMENGINE;
+    const uint8_t mid = CMD_ID_SET_PACKET_UPDATE_RATE;
+    const uint16_t raw_update_rate = rate;
+    const uint8_t update_rate[2] = {raw_update_rate & 0xFF, raw_update_rate >> 8};
+    saberSendFrame(saber, cid, mid, update_rate, 2);
+    return saberAckCheck(saber, cid, mid, timeout);
+}
+
 /**
  * @brief 发送消息，让saber退出config模式进入maesure模式
  *
@@ -363,11 +415,11 @@ bool saberParseDataFrame(saberCtx_t *saber, imuData_t *data)
     float raw_gyro[3] = {0};
     float raw_eular[4] = {0};   //最后一位是保留字段
 
-    uint16_t frame_len = saberRecvFrame(saber, buf, sizeof(buf), 10);
-    if (frame_len == 0) 
+    uint16_t len = saberRecvFrame(saber, buf, sizeof(buf), 10);
+    if (len == 0) 
         return false;
     
-    while ((buf[i] != 0x01 || buf[i + 1] != 0x88) && i < frame_len)  i += 1;
+    while ((buf[i] != 0x01 || buf[i + 1] != 0x88) && i < len)  i += 1;
     i += 3;
 
     memcpy(&raw_accel[AXIS_X], &buf[i], sizeof(float)); i += sizeof(float);
@@ -398,29 +450,3 @@ bool saberParseDataFrame(saberCtx_t *saber, imuData_t *data)
     return true;
 }
 
-bool saberInit(void *ctx)
-{
-    saberCtx_t *saber = ctx;
-
-    if (!saber || !saber->huart)
-        return false;
-
-    uint16_t b = saberRecvWakeUpHost(ctx);
-    if (b)
-        for (uint8_t i = 0; i < 3; i++)
-            saberWakeUpAck(ctx);
-
-    /* 这里的延时不能太短，起码要300ms，否则会导致数据包发送过快，接收不到saber反馈的ack帧
-   */
-    CHECK(saberSwitchToConfigMode(ctx, IMU_COMM_DELAY_TIME_MS));
-    CHECK(saberSetDataPacketConfig(ctx, IMU_COMM_DELAY_TIME_MS));
-    CHECK(saberSwitchMeasureMode(ctx, IMU_COMM_DELAY_TIME_MS));
-
-    return true;
-}
-
-bool saberRead(void *ctx, imuData_t *data)
-{
-    saberCtx_t *saber = ctx;
-    return saberParseDataFrame(saber, data);
-}

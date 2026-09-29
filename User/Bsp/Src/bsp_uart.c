@@ -1,11 +1,13 @@
+#include "stdio.h"
+
 #include "bsp_uart.h"
+#include "stm32f4xx_hal.h"
+#include "usart.h"
 
-#define DELAY_T 10 /* ms */
-
-void uartSend(UART_HandleTypeDef *huart, void *tx_buf) {
-  HAL_UART_Transmit(huart, tx_buf, 1, DELAY_T);
+int _write(int file, char *ptr, int len)
+{
+    (void)file;
+    HAL_UART_Transmit_DMA(&huart8, (uint8_t*)ptr, (uint16_t)len);
+    return len;
 }
 
-void uartReceive(UART_HandleTypeDef *huart, void *rx_buf) {
-  HAL_UART_Receive(huart, rx_buf, 1, DELAY_T);
-}

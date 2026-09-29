@@ -2,6 +2,7 @@
 #include "static_mem.h"
 #include "imu.h"
 #include "common.h"
+#include "stdio.h"
 
 static TaskHandle_t debug_task_handle;
 
@@ -38,6 +39,14 @@ void debugTask(void *arg)
         }
 
         yaw = data.yaw;
+        printf("%f, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f\n", 
+            acc[0], 
+            acc[1],
+            acc[2], 
+            gyro[0], 
+            gyro[1], 
+            gyro[2], 
+            yaw);
 
         vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(50));
     }
