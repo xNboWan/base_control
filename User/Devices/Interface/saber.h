@@ -22,9 +22,6 @@ typedef struct
 } saberCtx_t;
 
 extern saberCtx_t saber_ctx;
-
-bool saberInit(void *ctx);
-bool saberRead(void *ctx, imuData_t *data);
-
 extern imuOps_t saber_ops;
+
 #endif

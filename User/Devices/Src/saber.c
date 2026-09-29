@@ -10,6 +10,7 @@
  */
 
 #include "stdint.h"
+#include "string.h"
 
 #include "saber.h"
 #include "usart.h"
@@ -41,60 +42,6 @@
 #define CMD_ID_CFG_LOAD_FROM_FLASH    0x09
 #define CMD_ID_CFG_LOAD_FACTORY       0x0A
 
-/* 设备信息类 */
-#define CMD_ID_GET_FW_VERSION      0x01
-#define CMD_ID_GET_PRODUCT_VERSION 0x03
-#define CMD_ID_GET_VENDOR_INFO     0x04
-#define CMD_ID_GET_ALL_STATUS      0x06
-#define CMD_ID_GET_DEVICE_INFO     0x07
-#define CMD_ID_SET_MODULEID        0x0C
-#define CMD_ID_GET_MODULEID        0x0D
-
-/* 传感器配置类 */
-#define CMD_ID_SET_ACC_SCALE       0x01
-#define CMD_ID_GET_ACC_SCALE       0x02
-#define CMD_ID_SET_ACC_COEFF       0x03
-#define CMD_ID_GET_ACC_COEFF       0x04
-#define CMD_ID_SET_GYRO_SCALE      0x06
-#define CMD_ID_GET_GYRO_SCALE      0x07
-#define CMD_ID_SET_MAG_COEFF       0x0D
-#define CMD_ID_GET_MAG_COEFF       0x0E
-#define CMD_ID_SET_MAG_CALIBRATION 0x0F
-#define CMD_ID_SET_MUX2            0x12
-#define CMD_ID_GET_MUX2            0x13
-#define CMD_ID_MAG_CAL_PAC         0xB0
-#define CMD_ID_MAG_CAL_MSG         0xB1
-
-/* 算法引擎类 */
-#define CMD_ID_SET_ACC_1DEKF_PARAM    0x03
-#define CMD_ID_GET_ACC_1DEKF_PARAM    0x04
-#define CMD_ID_SET_GYRO_1DEKF_PARAM   0x05
-#define CMD_ID_GET_GYRO_1DEKF_PARAM   0x06
-#define CMD_ID_SET_MAG_1DEKF_PARAM    0x07
-#define CMD_ID_GET_MAG_1DEKF_PARAM    0x08
-#define CMD_ID_SET_ENGINE_FUSION_MODE 0x09
-#define CMD_ID_GET_ENGINE_FUSION_MODE 0x0A
-#define CMD_ID_SET_PACKET_UPDATE_RATE 0x10
-#define CMD_ID_GET_PACKET_UPDATE_RATE 0x11
-#define CMD_ID_SET_GYRO_THRESHOLD     0x22
-#define CMD_ID_GET_GYRO_THRESHOLD     0x23
-#define CMD_ID_SET_YAW_OFFSET         0x30
-#define CMD_ID_SET_ATTITUDE_OFFSET    0x31
-#define CMD_ID_SET_REFERENCE_OFFSET   0x32
-#define CMD_ID_SET_DISTANCE_OFFSET    0x33
-#define CMD_ID_SET_VELOCITY_OFFSET    0x34
-#define CMD_ID_SET_START_YAW          0x35
-#define CMD_ID_CLEAR_OFFSET           0x40
-#define CMD_ID_SET_ODOMETER_PARA      0x41
-#define CMD_ID_GET_ODOMETER_PARA      0x42
-#define CMD_ID_ODOMETER_PACKET        0x43
-#define CMD_ID_SET_SCENARIO           0x50
-#define CMD_ID_GET_SCENARIO           0x51
-#define CMD_ID_SET_COORDINATES_MODE   0x52
-#define CMD_ID_GET_COORDINATES_MODE   0x53
-#define CMD_ID_SET_SELFTEST_MODE      0x54
-#define CMD_ID_GET_SELFTEST_MODE      0x55
-
 /* 通信配置类 */
 #define CMD_ID_SET_COMPORT_PARAM       0x01
 #define CMD_ID_GET_COMPORT_PARAM       0x02
@@ -113,9 +60,6 @@
 #define CMD_ID_SET_SYNCOUT_CFG              0x0C
 #define CMD_ID_GET_SYNCOUT_CFG              0x0D
 
-/* 固件升级类 */
-#define CMD_ID_FIRMWARE_UPDATE_REQ    0x01
-#define CMD_ID_FIRMWARE_UPDATE_PACKET 0x02
 
 /* 数据配置类（仅保留需要的宏） */
 /* ---- 原始数据（int16，需乘 gain 换算） ---- */
@@ -132,8 +76,20 @@
 
 #define SABER_PID_EULER 0xB001u /* 欧拉角 R/P/Y, 3×float, 度 */
 
+
 #define ACK_MID(mid)           ((uint8_t)((mid) | 0x80))
 #define IMU_COMM_DELAY_TIME_MS 1000
+
+
+static uint8_t saberAtomBCC(uint8_t *addr, uint16_t len);
+static void saberSendFrame(saberCtx_t *saber, uint8_t cid, uint8_t mid, const uint8_t *payload, uint8_t pl);
+static uint16_t saberRecvFrame(saberCtx_t *saber, uint8_t *rx_buf, uint16_t buf_size, uint32_t timeout);
+static bool saberAckCheck(saberCtx_t *saber, uint8_t cid, uint8_t mid, uint32_t timeout);
+static bool saberRecvWakeUpHost(saberCtx_t *saber);
+static bool saberSwitchToConfigMode(saberCtx_t *saber, uint32_t timeout);
+static bool saberSwitchMeasureMode(saberCtx_t *saber, uint32_t timeout);
+static bool saberInit(void *ctx);
+static bool saberRead(void *ctx, imuData_t *data);
 
 typedef struct
 {
@@ -145,8 +101,10 @@ typedef struct
 static const saberPktCfg_t saber_pkt_table[] = {
     {SABER_PID_KALMAN_ACC,  true},
     {SABER_PID_KALMAN_GYRO, true},
-    {SABER_PID_EULER,       true}
+    {SABER_PID_EULER,       true},
 };
+
+imuOps_t saber_ops = {.init = saberInit, .read = saberRead};
 
 /**
  * @brief bcc校验
@@ -155,7 +113,7 @@ static const saberPktCfg_t saber_pkt_table[] = {
  * @param len 帧长度
  * @return uint8_t
  */
-static uint8_t saberAtomBCC(uint8_t *addr, uint16_t len)
+uint8_t saberAtomBCC(uint8_t *addr, uint16_t len)
 {
     unsigned char *DataPoint;
     DataPoint = addr;
@@ -179,8 +137,7 @@ static uint8_t saberAtomBCC(uint8_t *addr, uint16_t len)
  * @param payload 有效载荷指针
  * @param pl payload，载荷长度
  */
-static void
-saberSendFrame(saberCtx_t *saber, uint8_t cid, uint8_t mid, const uint8_t *payload, uint8_t pl)
+void saberSendFrame(saberCtx_t *saber, uint8_t cid, uint8_t mid, const uint8_t *payload, uint8_t pl)
 {
     uint8_t frame[262];
     uint16_t i = 0;
@@ -212,8 +169,7 @@ saberSendFrame(saberCtx_t *saber, uint8_t cid, uint8_t mid, const uint8_t *paylo
  * @param timeout 超时时间
  * @return uint16_t
  */
-static uint16_t
-saberRecvFrame(saberCtx_t *saber, uint8_t *rx_buf, uint16_t buf_size, uint32_t timeout)
+uint16_t saberRecvFrame(saberCtx_t *saber, uint8_t *rx_buf, uint16_t buf_size, uint32_t timeout)
 {
     uint8_t b = 0;
     uint16_t i = 0;
@@ -277,7 +233,7 @@ saberRecvFrame(saberCtx_t *saber, uint8_t *rx_buf, uint16_t buf_size, uint32_t t
  * @return true
  * @return false
  */
-static bool saberAckCheck(saberCtx_t *saber, uint8_t cid, uint8_t mid, uint32_t timeout)
+bool saberAckCheck(saberCtx_t *saber, uint8_t cid, uint8_t mid, uint32_t timeout)
 {
     uint8_t rx_buf[64];
     uint32_t start = HAL_GetTick();
@@ -303,7 +259,7 @@ static bool saberAckCheck(saberCtx_t *saber, uint8_t cid, uint8_t mid, uint32_t 
  * @return true
  * @return false
  */
-static bool saberRecvWakeUpHost(saberCtx_t *saber)
+bool saberRecvWakeUpHost(saberCtx_t *saber)
 {
     uint8_t rx_buf[8] = {0};
     uint16_t n = saberRecvFrame(saber, rx_buf, sizeof(rx_buf), 50);
@@ -320,7 +276,7 @@ static bool saberRecvWakeUpHost(saberCtx_t *saber)
  * @brief 主机向saber发送ack，表示收到数据，发送成功后saber会进入config模式
  *
  */
-static void saberWakeUpAck(saberCtx_t *saber)
+void saberWakeUpAck(saberCtx_t *saber)
 {
     saberSendFrame(saber, CLASS_ID_OPERATION_CMD, ACK_MID(CMD_ID_WAKEUP_HOST), NULL, 0);
 }
@@ -331,7 +287,7 @@ static void saberWakeUpAck(saberCtx_t *saber)
  * @return true
  * @return false
  */
-static bool saberSwitchToConfigMode(saberCtx_t *saber, uint32_t timeout)
+bool saberSwitchToConfigMode(saberCtx_t *saber, uint32_t timeout)
 {
     uint8_t cid = CLASS_ID_OPERATION_CMD;
     uint8_t mid = CMD_ID_SWITCH_TO_CFG_MODE;
@@ -347,7 +303,7 @@ static bool saberSwitchToConfigMode(saberCtx_t *saber, uint32_t timeout)
  * @return true
  * @return false
  */
-static bool saberSetDataPacketConfig(saberCtx_t *saber, uint32_t timeout)
+bool saberSetDataPacketConfig(saberCtx_t *saber, uint32_t timeout)
 {
     const uint8_t n = sizeof(saber_pkt_table) / sizeof(saber_pkt_table[0]);
     uint8_t payload[4 * 8];
@@ -381,13 +337,65 @@ static bool saberSetDataPacketConfig(saberCtx_t *saber, uint32_t timeout)
  * @return true
  * @return false
  */
-static bool saberSwitchMeasureMode(saberCtx_t *saber, uint32_t timeout)
+bool saberSwitchMeasureMode(saberCtx_t *saber, uint32_t timeout)
 {
     uint8_t cid = CLASS_ID_OPERATION_CMD;
     uint8_t mid = CMD_ID_SWITCH_TO_MEASURE_MODE;
     saberSendFrame(saber, cid, mid, NULL, 0);
     bool ack = saberAckCheck(saber, cid, mid, timeout);
     return ack;
+}
+
+/**
+ * @brief 解析数据帧
+ * 
+ * @param saber saber上下文指针
+ * @param data imu数据缓冲区指针
+ * @return true 
+ * @return false 
+ */
+bool saberParseDataFrame(saberCtx_t *saber, imuData_t *data)
+{
+    uint8_t buf[128];
+    uint8_t i = 0;
+
+    float raw_accel[3] = {0};
+    float raw_gyro[3] = {0};
+    float raw_eular[4] = {0};   //最后一位是保留字段
+
+    uint16_t frame_len = saberRecvFrame(saber, buf, sizeof(buf), 10);
+    if (frame_len == 0) 
+        return false;
+    
+    while ((buf[i] != 0x01 || buf[i + 1] != 0x88) && i < frame_len)  i += 1;
+    i += 3;
+
+    memcpy(&raw_accel[AXIS_X], &buf[i], sizeof(float)); i += sizeof(float);
+    memcpy(&raw_accel[AXIS_Y], &buf[i], sizeof(float)); i += sizeof(float);
+    memcpy(&raw_accel[AXIS_Z], &buf[i], sizeof(float)); i += sizeof(float);
+    i += 3;
+
+    memcpy(&raw_gyro[AXIS_X], &buf[i], sizeof(float)); i += sizeof(float);
+    memcpy(&raw_gyro[AXIS_Y], &buf[i], sizeof(float)); i += sizeof(float);
+    memcpy(&raw_gyro[AXIS_Z], &buf[i], sizeof(float)); i += sizeof(float);
+    i += 3;
+
+    memcpy(&raw_eular[ROLL], &buf[i], sizeof(float)); i += sizeof(float);
+    memcpy(&raw_eular[PITCH], &buf[i], sizeof(float)); i += sizeof(float);
+    memcpy(&raw_eular[YAW], &buf[i], sizeof(float)); i += sizeof(float);
+    i += 4;
+    
+    data->accel[AXIS_X] = raw_accel[AXIS_X] * GRAVITY;
+    data->accel[AXIS_Y] = raw_accel[AXIS_Y] * GRAVITY;
+    data->accel[AXIS_Z] = raw_accel[AXIS_Z] * GRAVITY;
+
+    data->gyro[AXIS_X] = raw_gyro[AXIS_X] * PI / 180.0f;
+    data->gyro[AXIS_Y] = raw_gyro[AXIS_Y] * PI / 180.0f;
+    data->gyro[AXIS_Z] = raw_gyro[AXIS_Z] * PI / 180.0f;
+
+    data->yaw = raw_eular[YAW] * PI / 180.0f;
+
+    return true;
 }
 
 bool saberInit(void *ctx)
@@ -413,7 +421,6 @@ bool saberInit(void *ctx)
 
 bool saberRead(void *ctx, imuData_t *data)
 {
-    return true;
+    saberCtx_t *saber = ctx;
+    return saberParseDataFrame(saber, data);
 }
-
-imuOps_t saber_ops = {.init = saberInit, .read = saberRead};
