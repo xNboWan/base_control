@@ -1,12 +1,21 @@
 #include "usart.h"
+#include "can.h"
 
 #include "bsp_led.h"
 #include "imu.h"
 #include "saber.h"
+
 #include "static_mem.h"
 #include "system.h"
 #include "debug.h"
 
+#define PASS(NAME, ARG, MODULE) do { \
+                bool step_ok = NAME##Init(ARG); \
+                pass &= step_ok; \
+                if (step_ok) { MODULE##_PASS; } \
+                } while (0)
+
+                
 saberCtx_t saber_ctx = {
     .huart = &huart6,
 };
@@ -15,6 +24,7 @@ imu_t imu = {
     .ops = &saber_ops,
     .ctx = &saber_ctx,
 };
+
 
 static void systemTask(void *arg);
 
@@ -27,22 +37,20 @@ void systemLaunch(void)
 void systemTask(void *arg)
 {
     (void)arg;
-
     bool pass = true;
 
-    pass &= imuInit(&imu);
-    if (pass)
-        IMU_PASS;
+    start:
+        PASS(imu, &imu, IMU);
+        PASS(debug, , DEBUG);
 
-    pass &= debugInit();
-    if (pass)
-        DEBUG_PASS;
-
-    if (pass)
-        ALL_PASS;
-    else
-        INIT_ERROR;
-
-    while (1)
-        vTaskDelay(portMAX_DELAY);
+        if (pass)
+        { 
+            ALL_PASS; 
+            while (1) vTaskDelay(portMAX_DELAY);
+        }
+        else
+        { 
+            INIT_ERROR;
+            goto start;
+        }
 }

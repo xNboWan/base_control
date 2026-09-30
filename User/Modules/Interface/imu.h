@@ -27,7 +27,7 @@ typedef struct
 typedef struct
 {
     bool (*init)(void *ctx);
-    bool (*read)(void *ctx, imuData_t *data); 
+    bool (*read)(void *ctx, imuData_t *pdata); 
 } imuOps_t;
 
 typedef struct
@@ -53,7 +53,7 @@ bool imuInit(imu_t *imu);
  * @return true 
  * @return false 
  */
-bool imuRead(imu_t *imu, imuData_t *data);
+bool imuRead(imu_t *imu, imuData_t *pdata);
 
 extern imu_t imu;
 

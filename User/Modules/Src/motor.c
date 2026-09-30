@@ -6,7 +6,7 @@ bool motorInit(motor_t *motor)
     return motor->motor_ops->init;
 }
 
-bool motorRead(motor_t *motor, motorData_t *data)
+bool motorRead(motor_t *motor, motorData_t *pdata)
 {
     return motor->motor_ops->read;
 }

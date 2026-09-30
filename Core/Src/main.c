@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "can.h"
 #include "dma.h"
 #include "usart.h"
 #include "gpio.h"
@@ -94,10 +95,16 @@ int main(void)
   MX_DMA_Init();
   MX_USART6_UART_Init();
   MX_UART8_Init();
+  MX_CAN1_Init();
   /* USER CODE BEGIN 2 */
+
   systemLaunch();
 
   vTaskStartScheduler();
+
+  /* 永远不要到达这里 */
+  HAL_GPIO_WritePin(GPIOF, GPIO_PIN_14, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_11, GPIO_PIN_RESET);
   /* USER CODE END 2 */
 
   /* Infinite loop */

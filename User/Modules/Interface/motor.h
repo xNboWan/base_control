@@ -14,14 +14,14 @@ typedef struct
 
 typedef struct
 {
-    int16_t speed;  //  目标角速度  pi / s
+    int16_t torque;  // 力矩 N*m/s
 } motorCmd_t;
 
 typedef struct
 {
     bool (*init)(void *ctx);
-    bool (*read)(void *ctx, motorData_t *data);
-    bool (*write)(void *ctx, motorCmd_t *data);
+    bool (*read)(void *ctx, motorData_t *pdata);
+    bool (*write)(void *ctx, motorCmd_t *pdata);
 } motorOps_t;
 
 typedef struct
@@ -31,7 +31,12 @@ typedef struct
 } motor_t;
 
 bool motorInit(motor_t *motor);
-bool motorRead(motor_t *motor, motorData_t *data);
+bool motorRead(motor_t *motor, motorData_t *pdata);
 bool motorWrite(motor_t *motor, motorCmd_t *cmd);
+
+extern motor_t motorFL;
+extern motor_t motorFR;
+extern motor_t motorRL;
+extern motor_t motorRR;
 
 #endif

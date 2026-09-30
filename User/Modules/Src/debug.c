@@ -48,6 +48,6 @@ void debugTask(void *arg)
             gyro[2], 
             yaw);
 
-        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(50));
+        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(100));
     }
 }

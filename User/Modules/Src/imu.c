@@ -21,9 +21,9 @@ bool imuInit(imu_t *imu)
     return imu->ops->init(imu->ctx);
 }
 
-bool imuRead(imu_t *imu, imuData_t *data)
+bool imuRead(imu_t *imu, imuData_t *pdata)
 {
-    return xQueuePeek(sampleQueue, data, 0) == pdTRUE;
+    return xQueuePeek(sampleQueue, pdata, 0) == pdTRUE;
 }
 
 void imuTask(void *arg)

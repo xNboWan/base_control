@@ -93,9 +93,9 @@ static bool saberSwitchToConfigMode(saberCtx_t *saber, uint32_t timeout);
 static bool saberSetUpdateRate(saberCtx_t *saber, uint16_t rate, uint32_t timeout);
 static bool saberSetDataPacketConfig(saberCtx_t *saber, uint32_t timeout);
 static bool saberSwitchMeasureMode(saberCtx_t *saber, uint32_t timeout);
-static bool saberParseDataFrame(saberCtx_t *saber, imuData_t *data);
+static bool saberParseDataFrame(saberCtx_t *saber, imuData_t *pdata);
 static bool saberInit(void *ctx);
-static bool saberRead(void *ctx, imuData_t *data);
+static bool saberRead(void *ctx, imuData_t *pdata);
 
 
 typedef struct
@@ -141,10 +141,10 @@ bool saberInit(void *ctx)
     return true;
 }
 
-bool saberRead(void *ctx, imuData_t *data)
+bool saberRead(void *ctx, imuData_t *pdata)
 {
     saberCtx_t *saber = ctx;
-    return saberParseDataFrame(saber, data);
+    return saberParseDataFrame(saber, pdata);
 }
 
 
@@ -406,7 +406,7 @@ bool saberSwitchMeasureMode(saberCtx_t *saber, uint32_t timeout)
  * @return true 
  * @return false 
  */
-bool saberParseDataFrame(saberCtx_t *saber, imuData_t *data)
+bool saberParseDataFrame(saberCtx_t *saber, imuData_t *pdata)
 {
     uint8_t buf[128];
     uint8_t i = 0;
@@ -437,15 +437,15 @@ bool saberParseDataFrame(saberCtx_t *saber, imuData_t *data)
     memcpy(&raw_eular[YAW], &buf[i], sizeof(float)); i += sizeof(float);
     i += 4;
     
-    data->accel[AXIS_X] = raw_accel[AXIS_X] * GRAVITY;
-    data->accel[AXIS_Y] = raw_accel[AXIS_Y] * GRAVITY;
-    data->accel[AXIS_Z] = raw_accel[AXIS_Z] * GRAVITY;
+    pdata->accel[AXIS_X] = raw_accel[AXIS_X] * GRAVITY;
+    pdata->accel[AXIS_Y] = raw_accel[AXIS_Y] * GRAVITY;
+    pdata->accel[AXIS_Z] = raw_accel[AXIS_Z] * GRAVITY;
 
-    data->gyro[AXIS_X] = raw_gyro[AXIS_X] * PI / 180.0f;
-    data->gyro[AXIS_Y] = raw_gyro[AXIS_Y] * PI / 180.0f;
-    data->gyro[AXIS_Z] = raw_gyro[AXIS_Z] * PI / 180.0f;
+    pdata->gyro[AXIS_X] = raw_gyro[AXIS_X] * PI / 180.0f;
+    pdata->gyro[AXIS_Y] = raw_gyro[AXIS_Y] * PI / 180.0f;
+    pdata->gyro[AXIS_Z] = raw_gyro[AXIS_Z] * PI / 180.0f;
 
-    data->yaw = raw_eular[YAW] * PI / 180.0f;
+    pdata->yaw = raw_eular[YAW] * PI / 180.0f;
 
     return true;
 }
