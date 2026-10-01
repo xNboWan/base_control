@@ -4,6 +4,7 @@
 #include "bsp_led.h"
 #include "imu.h"
 #include "saber.h"
+#include "chassis.h"
 
 #include "static_mem.h"
 #include "system.h"
@@ -13,7 +14,7 @@
                 bool step_ok = NAME##Init(ARG); \
                 pass &= step_ok; \
                 if (step_ok) { MODULE##_PASS; } \
-                } while (0)
+                vTaskDelay(pdMS_TO_TICKS(500));} while (0)
 
                 
 saberCtx_t saber_ctx = {
@@ -39,18 +40,17 @@ void systemTask(void *arg)
     (void)arg;
     bool pass = true;
 
-    start:
-        PASS(imu, &imu, IMU);
-        PASS(debug, , DEBUG);
+    pass &= imuInit(&imu);  if (pass) IMU_PASS;
+    pass &= debugInit();    if (pass) DEBUG_PASS;
+    pass &= chassisInit();  if (pass) CHASSIS_PASS;
 
-        if (pass)
-        { 
-            ALL_PASS; 
-            while (1) vTaskDelay(portMAX_DELAY);
-        }
-        else
-        { 
-            INIT_ERROR;
-            goto start;
-        }
+    if (pass)
+    { 
+        ALL_PASS; 
+        while (1) vTaskDelay(portMAX_DELAY);
+    }
+    else
+    { 
+        INIT_ERROR;
+    }
 }
