@@ -1,6 +1,6 @@
 /**
  * @file imu.h
- * @李嘉羽 (aa01082241015@gmail.com)
+ * @author 李嘉羽 (aa01082241015@gmail.com)
  * @brief imu抽象层头文件，该文件为上层对imu的调用提供了统一的接口
  * @version 0.1
  * @date 2026-09-29
@@ -15,7 +15,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "common.h"
+#include "generic_def.h"
 
 typedef struct
 {

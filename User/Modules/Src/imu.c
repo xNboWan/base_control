@@ -1,3 +1,14 @@
+/**
+ * @file imu.c
+ * @author 李嘉羽 (aa01082241015@gmail.com)
+ * @brief IMU 采样模块实现
+ * @version 0.1
+ * @date 2026-10-02
+ *
+ * @copyright Copyright (c) 2026
+ *
+ */
+
 #include "imu.h"
 #include "static_mem.h"
 

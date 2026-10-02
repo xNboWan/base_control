@@ -1,29 +1,95 @@
+/**
+ * @file chassis.c
+ * @author 李嘉羽 (aa01082241015@gmail.com)
+ * @brief 底盘模块实现
+ * @version 0.1
+ * @date 2026-10-02
+ *
+ * @copyright Copyright (c) 2026
+ *
+ */
+
 #include "chassis.h"
 #include "static_mem.h"
 
 #include "can.h"
 
 #include "motor.h"
+#include "wheel.h"
 #include "m3508.h"
+#include "pid.h"
+#include "generic_def.h"
 
-motor_t motor[4];
 
 static m3508Ctx_t m3508_ctx[4];
-
+motor_t motor[4];
+wheel_t wheel[4];
+static wheelGroup_t wheel_group;
 static TaskHandle_t chassis_task_handle;
 
 bool chassisInit(void)
 {
-    for (int i = 0; i < 4; i++)
+    m3508_ctx[FL].hcan = &hcan1;
+    m3508_ctx[FL].id = 1;
+    m3508_ctx[FR].hcan = &hcan1;
+    m3508_ctx[FR].id = 2;
+    m3508_ctx[RL].hcan = &hcan1;
+    m3508_ctx[RL].id = 3;
+    m3508_ctx[RR].hcan = &hcan1;
+    m3508_ctx[RR].id = 4;
+    
+    motor[FL].ctx = &m3508_ctx[FL];
+    motor[FR].ctx = &m3508_ctx[FR];
+    motor[RL].ctx = &m3508_ctx[RL];
+    motor[RR].ctx = &m3508_ctx[RR];
+    motor[FL].ops = &m3508_ops;
+    motor[FR].ops = &m3508_ops;
+    motor[RL].ops = &m3508_ops;
+    motor[RR].ops = &m3508_ops;
+    
+    pidCfg_t pid_cfg = 
     {
-        m3508_ctx[i].hcan = &hcan1;
-        m3508_ctx[i].id = i + 1;
+        .kp = 5.0f,
+        .ki = 0.0f,
+        .kd = 0.0f,
+        .kff = 0.0f,
+        .out_min = -10000.0f,
+        .out_max = 10000.0f,
+        .integral_max = 10000.0f,
+        .d_filter_alpha = 0.0f,
+        .wrap = 0.0f
+    };
 
-        motor[i].ops = &m3508_ops;
-        motor[i].ctx = &m3508_ctx[i];
-    }
-    if (!motorInit(motor, 4))
-        return false;
+    wheelCfg_t wheel_cfg_template;
+    
+    wheel_cfg_template.motor = motor[FL];
+    wheel_cfg_template.wheel_radius = WHEEL_RADIUS;
+    wheel_cfg_template.gear_ratio = GEAR_RATIO;
+    wheel_cfg_template.dir = FORWARD;
+    wheel_cfg_template.pid_cfg = pid_cfg;
+    wheel_cfg_template.v_max = 100.0f;
+    
+    wheelCfg_t wheel_cfg[4];
+    wheel_cfg[FL] = wheel_cfg_template;
+    wheel_cfg[FR] = wheel_cfg_template;
+    wheel_cfg[RL] = wheel_cfg_template;
+    wheel_cfg[RR] = wheel_cfg_template;
+    wheel_cfg[FL].motor = motor[FL];
+    wheel_cfg[FR].motor = motor[FR];
+    wheel_cfg[RL].motor = motor[RL];
+    wheel_cfg[RR].motor = motor[RR];
+    wheel_cfg[FL].dir = REVERSE;
+    wheel_cfg[FR].dir = FORWARD;
+    wheel_cfg[RL].dir = REVERSE;
+    wheel_cfg[RR].dir = FORWARD;
+
+    wheel_group.wheel = wheel;
+    wheel_group.wheel_num = 4;
+
+    wheelInit(&wheel[FL], &wheel_cfg[FL]);
+    wheelInit(&wheel[FR], &wheel_cfg[FR]);
+    wheelInit(&wheel[RL], &wheel_cfg[RL]);
+    wheelInit(&wheel[RR], &wheel_cfg[RR]);
 
     STATIC_MEM_TASK_ALLOC(chassisTask, 512);
     chassis_task_handle = STATIC_MEM_TASK_CREATE(chassisTask, chassisTask, "CHASSIS", NULL, 1);
@@ -36,44 +102,15 @@ bool chassisInit(void)
 void chassisTask(void *arg)
 {
     (void)arg;
-
-    uint8_t select_motor = 0;
-
     TickType_t last_wake_time = xTaskGetTickCount();
-    TickType_t last_switch_time = last_wake_time;
-
-    const TickType_t switch_period = pdMS_TO_TICKS(3000);
-    const TickType_t send_period = pdMS_TO_TICKS(2);
-
-    static volatile uint32_t write_errors = 0;
-    static volatile uint32_t send_errors = 0;
+    const float dt = 0.001f;
 
     for (;;)
     {
-        TickType_t now = xTaskGetTickCount();
+        wheelCmd_t cmd[4];
+        for (uint8_t i = 0; i < 4; i++) cmd[i].d_theta = PI;
 
-        // 每五秒切换到下一个电机
-        if ((TickType_t)(now - last_switch_time) >= switch_period)
-        {
-            select_motor = (select_motor + 1) % 4;
-            last_switch_time = now;
-        }
-
-        // 其他电机给零电流，选中的电机给 500
-        motorCmd_t cmd[4] = {0};
-        cmd[RR].torque = 0;
-
-        // 更新四个电机的指令缓存
-        for (uint8_t i = 0; i < 4; i++)
-        {
-            if (!motorWrite(&motor[i], &cmd[i]))
-                write_errors++;
-        }
-
-        // 统一发送 ID 1～4 的指令
-        if (!motorSend(&motor[FL]))
-            send_errors++;
-
-        vTaskDelayUntil(&last_wake_time, send_period);
+        wheelGroupWriteAndSend(&wheel_group, cmd, dt);
+        vTaskDelayUntil(&last_wake_time, pdMS_TO_TICKS(1000));
     }
 }

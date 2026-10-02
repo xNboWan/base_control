@@ -1,15 +1,21 @@
+/**
+ * @file motor.c
+ * @author 李嘉羽 (aa01082241015@gmail.com)
+ * @brief 电机抽象层实现
+ * @version 0.1
+ * @date 2026-10-02
+ *
+ * @copyright Copyright (c) 2026
+ *
+ */
+
 #include "motor.h"
 #include "static_mem.h"
 
 
-bool motorInit(motor_t *motor, uint8_t motor_num)
+bool motorInit(motor_t *motor)
 {
-    bool pass = true;
-    for (int i = 0; i < motor_num; i++)
-    {
-        pass &= motor[i].ops->init(motor[i].ctx);
-    }
-    return pass;
+    return motor->ops->init(motor->ctx);
 }
 
 bool motorRead(motor_t *motor, motorData_t *pdata)

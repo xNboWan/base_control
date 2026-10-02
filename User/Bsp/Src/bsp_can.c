@@ -1,3 +1,14 @@
+/**
+ * @file bsp_can.c
+ * @author 李嘉羽 (aa01082241015@gmail.com)
+ * @brief CAN 底层驱动实现
+ * @version 0.1
+ * @date 2026-10-02
+ *
+ * @copyright Copyright (c) 2026
+ *
+ */
+
 #include "bsp_can.h"
 #include "can.h"
 

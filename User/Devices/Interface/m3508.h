@@ -1,3 +1,14 @@
+/**
+ * @file m3508.h
+ * @author 李嘉羽 (aa01082241015@gmail.com)
+ * @brief M3508 电机驱动接口文件
+ * @version 0.1
+ * @date 2026-10-02
+ *
+ * @copyright Copyright (c) 2026
+ *
+ */
+
 #ifndef M3508_H
 #define M3508_H
 

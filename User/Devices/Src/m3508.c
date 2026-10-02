@@ -1,5 +1,17 @@
+/**
+ * @file m3508.c
+ * @author 李嘉羽 (aa01082241015@gmail.com)
+ * @brief M3508 电机驱动实现
+ * @version 0.1
+ * @date 2026-10-02
+ *
+ * @copyright Copyright (c) 2026
+ *
+ */
+
 #include "stdbool.h"
 
+#include "generic_def.h"
 #include "m3508.h"
 #include "bsp_can.h"
 #include "static_mem.h"
@@ -15,11 +27,6 @@ static bool m3508Read(void *ctx, motorData_t *pdata);
 static bool m3508Write(void *ctx, motorCmd_t *cmd);
 bool m3508Send(void *ctx);
 
-typedef struct
-{
-    motorCmd_t cmd;
-    uint8_t id;
-} m3508CmdMsg_t;
 
 motorOps_t m3508_ops = {.init = m3508Init,
     .read = m3508Read,
@@ -95,8 +102,8 @@ static bool m3508Read(void *ctx, motorData_t *pdata)
 
     int16_t current_count = (int16_t)(((uint16_t)raw[4] << 8) | raw[5]);
 
-    pdata->omega = (float)angle_count / 4096.0f;
-    pdata->d_omega = (float)speed_rpm / 30.0f;
+    pdata->theta = (float)angle_count / 4096.0f * PI;
+    pdata->d_theta = (float)speed_rpm / 30.0f * PI;
 
     /* 按反馈电流采用 ±16384 ↔ ±20 A 的比例估算 */
     float current_a = (float)current_count * (20.0f / 16384.0f);
@@ -113,7 +120,7 @@ bool m3508Write(void *ctx, motorCmd_t *cmd)
 
     if (m3508_ctx->id < 1 || m3508_ctx->id > 8)
         return false;
-    if (cmd->torque < -16384 || cmd->torque > 16384)
+    if (cmd->lq < -20.0f || cmd->lq > 20.0f)
         return false;
 
     if (xSemaphoreTake(cmd_mutex, pdMS_TO_TICKS(1)) != pdTRUE)
@@ -149,7 +156,8 @@ bool m3508Send(void *ctx)
 
     for (uint8_t i = 0; i < 4; i++)
     {
-        uint16_t raw = (uint16_t)snapshot[i].torque;
+        /* 电流 A → 原始指令：±20 A ↔ ±16384 */
+        uint16_t raw = (uint16_t)(int16_t)(snapshot[i].lq * (16384.0f / 20.0f));
 
         tx_data[2 * i] = (uint8_t)(raw >> 8);
         tx_data[2 * i + 1] = (uint8_t)(raw & 0xFF);

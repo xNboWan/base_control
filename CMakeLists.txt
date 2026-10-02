@@ -64,7 +64,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/User/Bsp/Interface
     ${CMAKE_CURRENT_SOURCE_DIR}/User/Modules/Interface
     ${CMAKE_CURRENT_SOURCE_DIR}/User/Devices/Interface
-    ${CMAKE_CURRENT_SOURCE_DIR}/User/Common/Interface
+    ${CMAKE_CURRENT_SOURCE_DIR}/User/Utils/Interface
 )
 
 # Add project symbols (macros)

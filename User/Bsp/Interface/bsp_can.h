@@ -1,3 +1,14 @@
+/**
+ * @file bsp_can.h
+ * @author 李嘉羽 (aa01082241015@gmail.com)
+ * @brief CAN 底层驱动接口文件
+ * @version 0.1
+ * @date 2026-10-02
+ *
+ * @copyright Copyright (c) 2026
+ *
+ */
+
 #ifndef BSP_CAN_H
 #define BSP_CAN_H
 

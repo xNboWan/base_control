@@ -1,5 +1,5 @@
 /**
- * @file common.h
+ * @file generic_def.h
  * @author 李嘉羽 (aa01082241015@gmail.com)
  * @brief 该文件中存放了一些常用的宏
  * @version 0.1
@@ -8,8 +8,8 @@
  * @copyright Copyright (c) 2026
  *
  */
-#ifndef COMMON_H
-#define COMMON_H
+#ifndef GENERIC_DEF_H
+#define GENERIC_DEF_H
 
 #define GRAVITY 9.792f
 #define PI 3.1415926535f

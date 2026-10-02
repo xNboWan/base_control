@@ -1,3 +1,14 @@
+/**
+ * @file motor.h
+ * @author 李嘉羽 (aa01082241015@gmail.com)
+ * @brief 电机抽象层接口文件
+ * @version 0.1
+ * @date 2026-10-02
+ *
+ * @copyright Copyright (c) 2026
+ *
+ */
+
 #ifndef MOTOR_H
 #define MOTOR_H
 
@@ -14,15 +25,15 @@ typedef enum
 
 typedef struct
 {
-    float omega;            // 机械角度 pi
-    float d_omega;          // 角速度  pi/s
+    float theta;            // 机械角度 rad
+    float d_theta;          // 角速度  rad/s
     float lq;               // 转矩电流 A
     int16_t temperature;    // 温度 
 } motorData_t;
 
 typedef struct
 {
-    int16_t torque;  // 力矩 N*m/s
+        float lq;           // 转矩电流 A
 } motorCmd_t;
 
 typedef struct
@@ -39,7 +50,7 @@ typedef struct
     void *ctx;
 } motor_t;
 
-bool motorInit(motor_t *motor, uint8_t motor_num);
+bool motorInit(motor_t *motor);
 bool motorRead(motor_t *motor, motorData_t *pdata);
 bool motorWrite(motor_t *motor, motorCmd_t *cmd);
 bool motorSend(motor_t *motor);

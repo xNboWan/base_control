@@ -16,7 +16,7 @@
 #include "usart.h"
 #include "FreeRTOS.h"
 
-#include "common.h"
+#include "generic_def.h"
 
 #define PREAMBLE1 0x41
 #define PREAMBLE2 0x78

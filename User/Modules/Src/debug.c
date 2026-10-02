@@ -1,7 +1,18 @@
+/**
+ * @file debug.c
+ * @author 李嘉羽 (aa01082241015@gmail.com)
+ * @brief 调试模块实现
+ * @version 0.1
+ * @date 2026-10-02
+ *
+ * @copyright Copyright (c) 2026
+ *
+ */
+
 #include "debug.h"
 #include "static_mem.h"
 #include "imu.h"
-#include "common.h"
+#include "generic_def.h"
 #include "stdio.h"
 #include "motor.h"
 
@@ -44,38 +55,35 @@ void debugTask(void *arg)
         motorRead(&motor[FR], &motor_data[FR]);
         motorRead(&motor[RL], &motor_data[RL]);
         motorRead(&motor[RR], &motor_data[RR]);
-        // printf("%f, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f\n", 
-        //     acc[0], 
-        //     acc[1],
-        //     acc[2], 
-        //     gyro[0], 
-        //     gyro[1], 
-        //     gyro[2], 
-        //     yaw);
+        printf("%f, %.3f, %.3f, %.3f\n", 
+            acc[0], 
+            acc[1],
+            acc[2],  
+            yaw);
 
         // printf("%f, %f, %f, %d,%f, %f, %f, %d,%f, %f, %f, %d,%f, %f, %f, %d\n", 
-        //     motor_data[FL].omega, 
-        //     motor_data[FL].d_omega,
+        //     motor_data[FL].theta, 
+        //     motor_data[FL].d_theta,
         //     motor_data[FL].lq,
         //     motor_data[FL].temperature,
-        //     motor_data[FR].omega, 
-        //     motor_data[FR].d_omega,
+        //     motor_data[FR].theta, 
+        //     motor_data[FR].d_theta,
         //     motor_data[FR].lq,
         //     motor_data[FR].temperature,            
-        //     motor_data[RL].omega, 
-        //     motor_data[RL].d_omega,
+        //     motor_data[RL].theta, 
+        //     motor_data[RL].d_theta,
         //     motor_data[RL].lq,
         //     motor_data[RL].temperature,           
-        //     motor_data[RR].omega, 
-        //     motor_data[RR].d_omega,
+        //     motor_data[RR].theta, 
+        //     motor_data[RR].d_theta,
         //     motor_data[RR].lq,
         //     motor_data[RR].temperature);
         printf("%f, %f, %f, %d\n", 
-            motor_data[RR].omega, 
-            motor_data[RR].d_omega,
+            motor_data[RR].theta, 
+            motor_data[RR].d_theta,
             motor_data[RR].lq,
             motor_data[RR].temperature);
 
-        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(10));
+        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(50));
     }
 }
