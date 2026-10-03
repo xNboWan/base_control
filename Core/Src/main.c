@@ -19,6 +19,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "can.h"
+#include "crc.h"
 #include "dma.h"
 #include "usart.h"
 #include "gpio.h"
@@ -96,6 +97,8 @@ int main(void)
   MX_USART6_UART_Init();
   MX_UART8_Init();
   MX_CAN1_Init();
+  MX_UART7_Init();
+  MX_CRC_Init();
   /* USER CODE BEGIN 2 */
 
   systemLaunch();

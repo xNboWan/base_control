@@ -18,7 +18,7 @@
 int _write(int file, char *ptr, int len)
 {
     (void)file;
-    HAL_UART_Transmit(&huart8, (uint8_t*)ptr, (uint16_t)len, 10);
+    HAL_UART_Transmit(&huart7, (uint8_t*)ptr, (uint16_t)len, 10);
     return len;
 }
 

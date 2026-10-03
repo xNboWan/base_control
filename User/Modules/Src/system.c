@@ -11,15 +11,16 @@
 
 #include "usart.h"
 #include "can.h"
-
 #include "bsp_led.h"
+
 #include "imu.h"
 #include "saber.h"
 #include "chassis.h"
+#include "debug.h"
+#include "remote.h"
 
 #include "static_mem.h"
 #include "system.h"
-#include "debug.h"
 
 #define PASS(NAME, ARG, MODULE) do { \
                 bool step_ok = NAME##Init(ARG); \
@@ -54,14 +55,13 @@ void systemTask(void *arg)
     pass &= imuInit(&imu);  if (pass) IMU_PASS;
     pass &= debugInit();    if (pass) DEBUG_PASS;
     pass &= chassisInit();  if (pass) CHASSIS_PASS;
+    pass &= remoteInit();   if (pass) REMOTE_PASS;
 
     if (pass)
     { 
         ALL_PASS; 
         while (1) vTaskDelay(portMAX_DELAY);
     }
-    else
-    { 
+    else 
         INIT_ERROR;
-    }
 }

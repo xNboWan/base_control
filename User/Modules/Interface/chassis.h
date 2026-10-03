@@ -44,8 +44,8 @@ void chassisTask(void *arg);
 
 typedef enum
 {
-    HEADLOCK = 0,
-    HEADFREE
+    HEADLOCK = 0,  /* yaw 目标角度，经 IMU/PID 得到角速度 */
+    HEADFREE      /* 直接使用 d_yaw 目标角速度 */
 } chassisMode;
 
 typedef struct
@@ -54,6 +54,13 @@ typedef struct
     float vy;
     float yaw;
     float d_yaw;
+    chassisMode mode;
 } chassisCmd_t;
+
+/* 提交最新的车体坐标系命令：vx/vy 为 m/s，yaw 为 rad，d_yaw 为 rad/s。
+ * HEADLOCK 跟踪 yaw；HEADFREE 使用 d_yaw。仅供任务调用；
+ * 未初始化、模式无效或命令含有非有限值时返回 false。
+ */
+bool chassisSetCommand(const chassisCmd_t *cmd);
 
 #endif

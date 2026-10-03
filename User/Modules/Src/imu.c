@@ -20,15 +20,15 @@ static void imuTask(void *arg);
 
 bool imuInit(imu_t *imu)
 {
-    if (!is_init)
-    {
-        STATIC_MEM_QUEUE_ALLOC(sampleQueue, 1, sizeof(imuData_t));
-        sampleQueue = STATIC_MEM_QUEUE_CREATE(sampleQueue);
+    if (is_init) return true;
 
-        STATIC_MEM_TASK_ALLOC(imuTask, 256);
-        imu_task_handle = STATIC_MEM_TASK_CREATE(imuTask, imuTask, "IMU", imu, 1);
-        is_init = true;
-    }
+    STATIC_MEM_QUEUE_ALLOC(sampleQueue, 1, sizeof(imuData_t));
+    sampleQueue = STATIC_MEM_QUEUE_CREATE(sampleQueue);
+
+    STATIC_MEM_TASK_ALLOC(imuTask, 256);
+    imu_task_handle = STATIC_MEM_TASK_CREATE(imuTask, imuTask, "IMU", imu, 1);
+    is_init = true;
+    
     return imu->ops->init(imu->ctx);
 }
 

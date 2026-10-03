@@ -25,14 +25,18 @@ static float acc[3];
 static float gyro[3];
 static float yaw;
 
+static bool is_init = false;
 bool debugInit(void)
 {
+    if (is_init) return true;
+
     STATIC_MEM_TASK_ALLOC(debugTask, 256);
     debug_task_handle = STATIC_MEM_TASK_CREATE(debugTask, debugTask, "DEBUG", NULL, 1);
-    if (debug_task_handle != NULL)
-        return true;
-    else
+    if (!debug_task_handle)
         return false;
+
+    is_init = true;
+    return true;
 }
 
 void debugTask(void *arg)
