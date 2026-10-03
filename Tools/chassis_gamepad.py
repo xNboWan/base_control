@@ -334,16 +334,19 @@ def run_control(link, args, console, gamepad):
             keys = terminal.read(0.01)
             batch = gamepad.poll()
             now = time.monotonic()
+            events = batch.events
             if focused != terminal.focused:
                 focused = terminal.focused
                 controller.seed(batch.state, now)
+                # 快照已接管输入基准，丢弃跨越焦点切换的旧事件。
+                events = ()
                 transmit(Command())
                 next_send = time.monotonic() + (RETRY_PERIOD if paused else SEND_PERIOD)
                 next_render = 0.0
-            actions = controller.update(batch.state, now, batch.events, enabled=focused and not paused)
+            actions = controller.update(batch.state, now, events, enabled=focused and not paused)
             if batch.state != previous_state or batch.events:
                 next_render = 0.0
-            if batch.events and focused and not paused:
+            if events and focused and not paused:
                 next_send = 0.0
             previous_state = batch.state
             for key in keys:

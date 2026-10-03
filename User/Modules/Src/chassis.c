@@ -22,6 +22,18 @@
 #include "pid.h"
 #include "generic_def.h"
 
+typedef struct
+{
+    float vx;
+    float vy;
+} vec2;
+
+typedef struct
+{
+    float x;
+    float y;
+    float yaw;
+} frame;
 
 static m3508Ctx_t m3508_ctx[4];
 motor_t motor[4];
@@ -30,11 +42,14 @@ wheel_t wheel[4];
 static wheelGroup_t wheel_group;
 static chassisCmd_t chassis_cmd = {.mode = HEADFREE};
 static pidController_t yaw_pid;
-
 static TaskHandle_t chassis_task_handle;
+static frame world_frame = {0};
+static frame machine_frame;
+
 static bool is_init = false;
 
 static void chassisInverseKinematicsSolution(const chassisCmd_t *target, wheelCmd_t wheel_cmd[4]);
+void coordinateFrameTransformation(frame *from, frame *to, vec2 *input, vec2 *output);
 
 bool chassisInit(void)
 {
@@ -58,15 +73,17 @@ bool chassisInit(void)
     motor[RL].ops = &m3508_ops;
     motor[RR].ops = &m3508_ops;
 
-    static const pidCfg_t pid_cfg = {.kp = 5.0f,
-        .ki = 0.0f,
-        .kd = 0.0f,
+    static const pidCfg_t pid_cfg = {
+        .kp = 5.5f,
+        .ki = 0.01f,
+        .kd = 0.01f,
         .kff = 0.0f,
         .out_min = -20.0f,
         .out_max = 20.0f,
-        .integral_max = 10000.0f,
+        .integral_max = 1000.0f,
         .d_filter_alpha = 0.0f,
-        .wrap = 0.0f};
+        .wrap = 0.0f
+    };
 
     wheelCfg_t wheel_cfg_template;
 
@@ -101,7 +118,7 @@ bool chassisInit(void)
 
     static const pidCfg_t yaw_pid_cfg =
     {
-    .kp = .0f,
+    .kp = 0.0f,
     .ki = 0.01f,
     .kd = 0.0f,
     .kff = 0.0f,
@@ -114,7 +131,7 @@ bool chassisInit(void)
 
     pidInit(&yaw_pid, &yaw_pid_cfg);
 
-    STATIC_MEM_TASK_ALLOC(chassisTask, 512);
+    STATIC_MEM_TASK_ALLOC(chassisTask, 1024);
     chassis_task_handle = STATIC_MEM_TASK_CREATE(chassisTask, chassisTask, "CHASSIS", NULL, 1);
 
     if (!chassis_task_handle)
@@ -143,47 +160,39 @@ void chassisTask(void *arg)
     TickType_t last_wake_time = xTaskGetTickCount();
     const float dt = 0.001f;
     wheelCmd_t wheel_cmd[4] = {0};
-    float yaw_rate_cmd = 0.0f;
-    uint8_t yaw_tick = 0;
-    chassisMode previous_mode = HEADFREE;
+
+    const vec2 world_velocity = {
+        .vx = 1.0f,
+        .vy = 0.0f
+    };
+
     for (;;)
     {
-        chassisCmd_t target;
-        taskENTER_CRITICAL();
-        target = chassis_cmd;
-        taskEXIT_CRITICAL();
+        chassisCmd_t target = {
+            .mode = HEADFREE
+        };
+        imuData_t imu_data = {0};
 
-        if (target.mode != previous_mode)
+        if (imuRead(&imu, &imu_data) && isfinite(imu_data.yaw))
         {
-            pidReset(&yaw_pid);
-            yaw_rate_cmd = 0.0f;
-            yaw_tick = 9;  /* 进入角度模式时立即计算一次。 */
-            previous_mode = target.mode;
-        }
-        if (target.mode == HEADLOCK)
-        {
-            imuData_t imu_data = {0};
-            if (!imuRead(&imu, &imu_data) || !isfinite(imu_data.yaw))
-            {
-                pidReset(&yaw_pid);
-                yaw_rate_cmd = 0.0f;
-                yaw_tick = 0;
-                target.vx = 0.0f;
-                target.vy = 0.0f;
-            }
-            else if (++yaw_tick >= 10)
-            {
-                yaw_tick = 0;
-                /* 每 10 个 1 ms 周期计算一次，角度环 dt 为 0.010 s。 */
-                yaw_rate_cmd = pidCalc(&yaw_pid, target.yaw, imu_data.yaw, 0.010f);
-            }
+            machine_frame.yaw = imu_data.yaw;
 
-            /* 每个 1 ms 周期都使用最近一次计算结果。 */
-            target.d_yaw = yaw_rate_cmd;
+            vec2 machine_velocity = {0};
+            vec2 input = world_velocity;
+
+            coordinateFrameTransformation(&world_frame,
+                                          &machine_frame,
+                                          &input,
+                                          &machine_velocity);
+
+            target.vx = machine_velocity.vx;
+            target.vy = machine_velocity.vy;
+            target.d_yaw = 1.0f;  
         }
 
         chassisInverseKinematicsSolution(&target, wheel_cmd);
         wheelGroupWriteAndSend(&wheel_group, wheel_cmd, dt);
+
         vTaskDelayUntil(&last_wake_time, pdMS_TO_TICKS(1));
     }
 }
@@ -218,4 +227,19 @@ void chassisInverseKinematicsSolution(const chassisCmd_t *target, wheelCmd_t whe
 
     for (uint8_t i = 0; i < 4; i++)
         wheel_cmd[i].d_theta = d_theta[i];
+}
+
+void coordinateFrameTransformation(frame *from, frame *to,
+                                   vec2 *input, vec2 *output)
+{
+    const float angle = from->yaw - to->yaw;
+    const float c = cosf(angle);
+    const float s = sinf(angle);
+
+    /* 缓存输入，允许 input 和 output 指向同一个对象 */
+    const float vx = input->vx;
+    const float vy = input->vy;
+
+    output->vx = c * vx - s * vy;
+    output->vy = s * vx + c * vy;
 }

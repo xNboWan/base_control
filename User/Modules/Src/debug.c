@@ -26,11 +26,12 @@ static float gyro[3];
 static float yaw;
 
 static bool is_init = false;
+
 bool debugInit(void)
 {
     if (is_init) return true;
 
-    STATIC_MEM_TASK_ALLOC(debugTask, 256);
+    STATIC_MEM_TASK_ALLOC(debugTask, 512);
     debug_task_handle = STATIC_MEM_TASK_CREATE(debugTask, debugTask, "DEBUG", NULL, 1);
     if (!debug_task_handle)
         return false;
@@ -56,11 +57,11 @@ void debugTask(void *arg)
         }
         yaw = imu_data.yaw;
 
-        // printf("%f, %.3f, %.3f, %.3f\n", 
-        //     acc[0], 
-        //     acc[1],
-        //     acc[2],  
-        //     yaw);
+        printf("%f, %.3f, %.3f, %.3f\n", 
+            acc[0], 
+            acc[1],
+            acc[2],  
+            yaw);
 
         
             // printf("%f, %f, %f, %d,%f, %f, %f, %d,%f, %f, %f, %d,%f, %f, %f, %d\n", 
@@ -87,7 +88,7 @@ void debugTask(void *arg)
             //     motor_data[RR].temperature);
         wheelRead(&wheel[RL], &wheel_data);
 
-        printf("%f, %f, %f\n", wheel_data.d_theta, wheel_data.target_d_theta, wheel_data.v);
+        //printf("%f, %f, %f\n", wheel_data.d_theta, wheel_data.target_d_theta, wheel_data.v);
 
         vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(50));
     }

@@ -204,9 +204,10 @@ class GamepadDisplayTests(unittest.TestCase):
 
 
 class GamepadSessionTests(unittest.TestCase):
-    def exercise(self, states, focus=None, fail_first_motion=False):
+    def exercise(self, states, focus=None, fail_first_motion=False, events=None):
         clock = SimpleNamespace(now=0.0, step=0)
         focus = focus or {}
+        events = events or {}
         submitted = []
         failed = False
 
@@ -223,7 +224,8 @@ class GamepadSessionTests(unittest.TestCase):
                 self.focused = focus.get(clock.step, self.focused)
                 return ''
 
-        gamepad = SimpleNamespace(name='Test Xbox', poll=lambda: app.GamepadBatch(states.get(clock.step, app.GamepadState())))
+        gamepad = SimpleNamespace(name='Test Xbox', poll=lambda: app.GamepadBatch(
+            states.get(clock.step, app.GamepadState()), events.get(clock.step, ())))
         args = SimpleNamespace(port='loop://', baud=115200, max_speed=0.8, speed_step=0.1,
                                yaw_rate=0.5, deadzone=0.08, button_mode=3, button_stop=1, button_exit=7)
         with serial.serial_for_url('loop://', timeout=0, write_timeout=0.1) as link:
@@ -272,6 +274,19 @@ class GamepadSessionTests(unittest.TestCase):
         submitted = self.exercise(states, focus={2: False, 3: True})
         self.assertTrue(all(command == Command() for stamp, step, command in submitted if 2 <= step <= 5))
         self.assertTrue(any(step == 6 and command.vx > 0 for stamp, step, command in submitted))
+
+    def test_focus_return_drops_pending_hat_and_mode_events(self):
+        held = app.GamepadState(left_y=-1, hat=(0, 1), buttons=frozenset({3}))
+        states = {1: app.GamepadState(hat=(0, 1)), 2: app.GamepadState(),
+                  3: held, 4: held, 5: app.GamepadState(),
+                  6: app.GamepadState(hat=(0, 1)),
+                  7: app.GamepadState(buttons=frozenset({7}))}
+        pending = (('button', (3, False)), ('button', (3, True)),
+                   ('hat', (0, 0)), ('hat', (0, 1)))
+        submitted = self.exercise(states, focus={2: False, 3: True}, events={3: pending})
+        self.assertTrue(all(command == Command() for stamp, step, command in submitted if 2 <= step <= 5))
+        self.assertTrue(any(step == 6 and command == Command(vx=0.1)
+                            for stamp, step, command in submitted))
 
     def test_terminal_focus_reports_preserve_ctrl_l_space_and_tty_settings(self):
         master, slave = pty.openpty()
