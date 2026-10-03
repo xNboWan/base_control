@@ -47,14 +47,14 @@ static float pidWrap(float value, float half_range)
     return value;
 }
 
-void pidInit(pid_t *pid, const pidCfg_t *cfg)
+void pidInit(pidController_t *pid, const pidCfg_t *cfg)
 {
     if (pid == NULL) return;
     pid->cfg = cfg != NULL ? *cfg : (pidCfg_t){0};
     pidReset(pid);
 }
 
-void pidReset(pid_t *pid)
+void pidReset(pidController_t *pid)
 {
     if (pid == NULL) return;
     pid->integral = 0.0f;
@@ -64,7 +64,7 @@ void pidReset(pid_t *pid)
     pid->d_history_valid = false;
 }
 
-float pidCalc(pid_t *pid, float setpoint, float measurement, float dt)
+float pidCalc(pidController_t *pid, float setpoint, float measurement, float dt)
 {
     if (pid == NULL || !isfinite(setpoint) || !isfinite(measurement)
         || !isfinite(dt) || dt <= 0.0f || !pidCfgValid(&pid->cfg))

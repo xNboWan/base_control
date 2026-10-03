@@ -22,7 +22,7 @@
  *                      .out_max = .., .out_min = ..,
  *                      .integral_max = .., .wrap = ..,
  *                      .d_filter_alpha = 1.0f};   // 1.0f = D 项不过滤
- *   pid_t pid;
+ *   pidController_t pid;
  *   pidInit(&pid, &cfg);
  *   float out = pidCalc(&pid, setpoint, measurement, dt);
  */
@@ -56,16 +56,16 @@ typedef struct
     float d_filtered;        // D 项滤波后的值
     float setpoint;          // 最近一次有效计算的目标值，供外部只读观测；复位归零
     bool  d_history_valid;   // 复位时 false，首次有效计算记录测量值后置 true
-} pid_t;
+} pidController_t;
 
 /* 必须先初始化再计算。配置中的数值应有限，out_min <= out_max，
  * integral_max >= 0，0 <= wrap <= FLT_MAX/2。NULL cfg 初始化为零配置。
  * setpoint 字段仅为观测快照；实际目标始终使用 pidCalc 的参数。
  * 同一实例由一个控制任务更新，对外并发读取应通过上层快照接口。 */
-void  pidInit(pid_t *pid, const pidCfg_t *cfg);
-void  pidReset(pid_t *pid);
+void  pidInit(pidController_t *pid, const pidCfg_t *cfg);
+void  pidReset(pidController_t *pid);
 /* 非法输入、配置或数值溢出返回 0，且不更新状态；正常返回已限幅的输出。
  * 复位后的第一帧只建立微分历史，D 项为 0，P/I/前馈仍正常计算。 */
-float pidCalc(pid_t *pid, float setpoint, float measurement, float dt);
+float pidCalc(pidController_t *pid, float setpoint, float measurement, float dt);
 
 #endif

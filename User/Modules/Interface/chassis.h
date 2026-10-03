@@ -24,7 +24,7 @@ void chassisTask(void *arg);
 #define WHEELBASE 574.0f
 /*轮组到中心距离(mm)*/
 #define WHEEL_TO_CORE_DISTANCE 275.0f
-/*轮子半径(mm) */
+/*轮子半径(m) */
 #define WHEEL_RADIUS (129.0f * 0.5f / 1000.0f)
 
 /*半轮距m*/
@@ -42,8 +42,18 @@ void chassisTask(void *arg);
 /*滚子倾角（麦克纳姆）*/
 #define WHEEL_ROLLER_ANGLE (45.0f / 180.0f * PI)
 
+typedef enum
+{
+    HEADLOCK = 0,
+    HEADFREE
+} chassisMode;
 
-
-
+typedef struct
+{
+    float vx;
+    float vy;
+    float yaw;
+    float d_yaw;
+} chassisCmd_t;
 
 #endif

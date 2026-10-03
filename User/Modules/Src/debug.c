@@ -15,6 +15,7 @@
 #include "generic_def.h"
 #include "stdio.h"
 #include "motor.h"
+#include "wheel.h"
 
 static TaskHandle_t debug_task_handle;
 
@@ -38,7 +39,7 @@ void debugTask(void *arg)
 {
     (void)arg;
     imuData_t imu_data;
-    motorData_t motor_data[4];
+    wheelData_t wheel_data;
     TickType_t xLastWakeTime = xTaskGetTickCount();
     
     for (;;)
@@ -51,38 +52,38 @@ void debugTask(void *arg)
         }
         yaw = imu_data.yaw;
 
-        motorRead(&motor[FL], &motor_data[FL]);
-        motorRead(&motor[FR], &motor_data[FR]);
-        motorRead(&motor[RL], &motor_data[RL]);
-        motorRead(&motor[RR], &motor_data[RR]);
-        printf("%f, %.3f, %.3f, %.3f\n", 
-            acc[0], 
-            acc[1],
-            acc[2],  
-            yaw);
+        // printf("%f, %.3f, %.3f, %.3f\n", 
+        //     acc[0], 
+        //     acc[1],
+        //     acc[2],  
+        //     yaw);
 
-        // printf("%f, %f, %f, %d,%f, %f, %f, %d,%f, %f, %f, %d,%f, %f, %f, %d\n", 
-        //     motor_data[FL].theta, 
-        //     motor_data[FL].d_theta,
-        //     motor_data[FL].lq,
-        //     motor_data[FL].temperature,
-        //     motor_data[FR].theta, 
-        //     motor_data[FR].d_theta,
-        //     motor_data[FR].lq,
-        //     motor_data[FR].temperature,            
-        //     motor_data[RL].theta, 
-        //     motor_data[RL].d_theta,
-        //     motor_data[RL].lq,
-        //     motor_data[RL].temperature,           
-        //     motor_data[RR].theta, 
-        //     motor_data[RR].d_theta,
-        //     motor_data[RR].lq,
-        //     motor_data[RR].temperature);
-        printf("%f, %f, %f, %d\n", 
-            motor_data[RR].theta, 
-            motor_data[RR].d_theta,
-            motor_data[RR].lq,
-            motor_data[RR].temperature);
+        
+            // printf("%f, %f, %f, %d,%f, %f, %f, %d,%f, %f, %f, %d,%f, %f, %f, %d\n", 
+            //     motor_data[FL].theta, 
+            //     motor_data[FL].d_theta,
+            //     motor_data[FL].lq,
+            //     motor_data[FL].temperature,
+            //     motor_data[FR].theta, 
+            //     motor_data[FR].d_theta,
+            //     motor_data[FR].lq,
+            //     motor_data[FR].temperature,            
+            //     motor_data[RL].theta, 
+            //     motor_data[RL].d_theta,
+            //     motor_data[RL].lq,
+            //     motor_data[RL].temperature,           
+            //     motor_data[RR].theta, 
+            //     motor_data[RR].d_theta,
+            //     motor_data[RR].lq,
+            //     motor_data[RR].temperature);
+            // printf("%f, %f, %f, %d\n", 
+            //     motor_data[RR].theta, 
+            //     motor_data[RR].d_theta,
+            //     motor_data[RR].lq,
+            //     motor_data[RR].temperature);
+        wheelRead(&wheel[RL], &wheel_data);
+
+        printf("%f, %f, %f\n", wheel_data.d_theta, wheel_data.target_d_theta, wheel_data.v);
 
         vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(50));
     }

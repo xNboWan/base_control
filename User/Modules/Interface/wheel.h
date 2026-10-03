@@ -53,7 +53,7 @@ typedef struct
 {
     wheelData_t data;
     wheelCfg_t cfg;
-    pid_t pid;
+    pidController_t pid;
 } wheel_t;
 
 typedef struct
